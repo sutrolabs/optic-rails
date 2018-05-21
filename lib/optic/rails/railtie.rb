@@ -6,12 +6,16 @@ module Optic
     class Railtie < ::Rails::Railtie
       initializer "optic_rails.launch_client_thread" do |app|
         # TODO use tagged logger, make it clear which thread log messages are coming from
+        logger = ::Rails.logger
 
         # Get configuration
-        api_key = app.config.optic_api_key # TODO fail gracefully if missing
-        uri = app.config.optic_uri
+        if !app.config.respond_to? :optic_api_key
+          logger.warn "No optic_api_key found in Rails configuration, Optic agent will not run"
+          next
+        end
 
-        logger = ::Rails.logger
+        api_key = app.config.optic_api_key
+        uri = app.config.optic_uri
 
         logger.debug "Starting supervisor thread"
         supervisor = Thread.new do
