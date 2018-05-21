@@ -79,7 +79,7 @@ module Optic
 
       # Run PageRank on the graph to order the vertices by interestingness
       alpha = 0.5 # arbitrary! seems to work!
-      vertices = graph.vertices.sort_by(&:name)
+      vertices = graph.vertices.find_all { |name| name.present? }.sort_by(&:name) # TODO why are some of these unnamed?
 
       adjacency_matrix = Array.new(vertices.size) do |i|
         Array.new(vertices.size) do |j|
