@@ -1,12 +1,14 @@
 require "action_cable_client"
 require "eventmachine"
+require "logger"
 
 module Optic
   module Rails
     class Railtie < ::Rails::Railtie
       initializer "optic_rails.launch_client_thread" do |app|
-        # TODO use tagged logger, make it clear which thread log messages are coming from
-        logger = ::Rails.logger
+        # TODO allow log output customization and verbose option
+        logger = Logger.new(STDOUT)
+        logger.level = Logger::WARN
 
         # Get configuration
         if !app.config.respond_to? :optic_api_key
@@ -30,7 +32,7 @@ module Optic
                 end
 
                 client.disconnected do
-                  logger.warn "Optic agent disconnected, killing client thread"
+                  logger.info "Optic agent disconnected, killing client thread"
                   EventMachine.stop
                 end
 
@@ -67,7 +69,7 @@ module Optic
                 end
               end
 
-              logger.warn "Stopping worker thread"
+              logger.info "Stopping worker thread"
             end
 
             begin
@@ -76,7 +78,7 @@ module Optic
               logger.error "Worker thread died with error: #{e}"
             end
 
-            logger.warn "Supervisor thread detected dead worker, sleeping"
+            logger.info "Supervisor thread detected dead worker, sleeping"
             sleep 5.0
             logger.debug "Supervisor thread done sleeping"
           end
