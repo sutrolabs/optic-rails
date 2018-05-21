@@ -37,7 +37,6 @@ module Optic
                 client.errored do |msg|
                   logger.warn "Optic agent error: #{msg}"
                   EventMachine.stop
-                  # TODO stop worker?
                 end
 
                 client.subscribed do
