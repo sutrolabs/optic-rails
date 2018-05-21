@@ -115,7 +115,8 @@ module Optic
       result = {
         entity_totals: [],
         pivot_name: pivot.name,
-        pivot_values: pivot.all.as_json, # TODO this is slow and possibly brings in sensitive info, TODO use thread pool for this
+        # TODO filter columns, spread over multiple queries
+        pivot_values: execute_sql_query(pivot.unscoped.select("*").to_sql).to_a,
         pivoted_totals: []
         # TODO also return computed "spanning" tree of objects from the pivot's POV (using the dijkstra paths from below)
       }
