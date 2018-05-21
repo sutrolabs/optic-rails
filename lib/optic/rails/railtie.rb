@@ -74,7 +74,7 @@ module Optic
             begin
               worker.join
             rescue => e
-              logger.error "Worker thread died with error", e
+              logger.error "Worker thread died with error: #{e}"
             end
 
             logger.warn "Supervisor thread detected dead worker, sleeping"
