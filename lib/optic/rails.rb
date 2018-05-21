@@ -103,13 +103,19 @@ module Optic
       }
     end
 
+    def self.execute_sql_query(sql)
+      ActiveRecord::Base.connection_pool.with_connection do |connection|
+        connection.execute(sql)
+      end
+    end
+
     def self.get_metrics(pivot_name)
       pivot = pivot_name.constantize
 
       result = {
         entity_totals: [],
         pivot_name: pivot.name,
-        pivot_values: pivot.all.as_json, # TODO this is slow and possibly brings in sensitive info
+        pivot_values: pivot.all.as_json, # TODO this is slow and possibly brings in sensitive info, TODO use thread pool for this
         pivoted_totals: []
         # TODO also return computed "spanning" tree of objects from the pivot's POV (using the dijkstra paths from below)
       }
@@ -121,7 +127,8 @@ module Optic
       edge_weights = lambda { |_| 1 }
 
       graph.vertices.each do |vertex|
-        result[:entity_totals] << { name: vertex.name, total: vertex.count }
+        count_query = vertex.unscoped.select("COUNT(*)").to_sql
+        result[:entity_totals] << { name: vertex.name, total: execute_sql_query(count_query).first["count"] }
 
         next if vertex == pivot # Skip pivoted metrics if this is the pivot
 
@@ -137,9 +144,9 @@ module Optic
           end
 
           joins = belongs_to_names.reverse.inject { |acc, elt| { elt => acc } }
-          query = vertex.unscoped.joins(joins).group(qualified_primary_key(pivot))
+          query = vertex.unscoped.joins(joins).group(qualified_primary_key(pivot)).select(qualified_primary_key(pivot), "COUNT(#{qualified_primary_key(vertex)})").to_sql
 
-          result[:pivoted_totals] << { entity_name: vertex.name, totals: query.count }
+          result[:pivoted_totals] << { entity_name: vertex.name, totals: Hash[execute_sql_query(query).map { |record| [record["id"], record["count"]] }] }
         else
           p "WARNING: No path from #{vertex.name} to #{pivot.name}"
         end
