@@ -47,6 +47,7 @@ module Optic
 
                 client.pinged do |msg|
                   logger.debug "Optic agent pinged: #{msg}"
+                  client.perform "pong", message: {}
                 end
 
                 # called whenever a message is received from the server
