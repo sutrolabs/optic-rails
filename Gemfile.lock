@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    optic-rails (0.0.5)
+    optic-rails (0.1.0)
       action_cable_client (~> 2.0.2)
       eventmachine (~> 1.0)
       rails (~> 5.2.0.rc2)
@@ -123,7 +123,7 @@ GEM
     thread_safe (0.3.6)
     tzinfo (1.2.5)
       thread_safe (~> 0.1)
-    websocket (1.2.5)
+    websocket (1.2.7)
     websocket-driver (0.7.0)
       websocket-extensions (>= 0.1.0)
     websocket-eventmachine-base (1.2.0)
