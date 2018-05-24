@@ -150,12 +150,13 @@ module Optic
             belongs_to_names = path.each_cons(2).map do |join_from, join_to|
               # TODO we shouldn't have to look up the edge again - use a graph model that allows us to annotate the edges with the reflections
               reflections = join_from.reflect_on_all_associations(:belongs_to).find_all { |reflection| !reflection.options[:polymorphic] && reflection.klass == join_to }
-              raise "Multiple belongs_to unsupported" unless reflections.size == 1 # TODO
-              reflections.first.name
+              # TODO warn if more than one reflection
+              reflection = reflections.min_by { |r| r.options.size }
+              reflection.name
             end
 
             joins = belongs_to_names.reverse.inject { |acc, elt| { elt => acc } }
-            query = vertex.unscoped.joins(joins).group(qualified_primary_key(pivot)).select(qualified_primary_key(pivot), "COUNT(#{qualified_primary_key(vertex)})").to_sql
+            query = vertex.unscoped.joins(joins).group(qualified_primary_key(pivot)).select(qualified_primary_key(pivot), "COUNT(*)").to_sql
 
             result[:pivoted_totals] << { entity_name: vertex.name, totals: Hash[connection.execute(query).map { |record| [record["id"], record["count"]] }] }
           else
