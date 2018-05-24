@@ -119,17 +119,15 @@ module Optic
 
     def self.get_metrics(pivot_name)
       with_connection do |connection|
-        pivot = pivot_name.constantize
-        pivot_values = connection.execute(pivot.unscoped.select("*").to_sql).to_a
+        result = {entity_totals: []}
+        pivot = nil
 
-        result = {
-          entity_totals: [],
-          pivot_name: pivot.name,
-          # TODO filter columns, spread over multiple queries
-          pivot_values: pivot_values,
-          pivoted_totals: []
-          # TODO also return computed "spanning" tree of objects from the pivot's POV (using the dijkstra paths from below)
-        }
+        if pivot_name
+          pivot = pivot_name.constantize
+          result[:pivot_name] = pivot.name
+          result[:pivot_values] = connection.execute(pivot.unscoped.select("*").to_sql).to_a
+          result[:pivoted_totals] = []
+        end
 
         graph = entity_graph
 
@@ -141,32 +139,31 @@ module Optic
           count_query = vertex.unscoped.select("COUNT(*)").to_sql
           result[:entity_totals] << { name: vertex.name, total: connection.execute(count_query).first["count"] }
 
-          next if vertex == pivot # Skip pivoted metrics if this is the pivot
+          if pivot && vertex != pivot
+            # TODO weight edges to give preference to non-optional belongs_to (and other attributes?)
+            path = graph.dijkstra_shortest_path(edge_weights, vertex, pivot)
+            if path
+              # Generate a SQL query to count the number of vertex instances grouped by pivot id, with appropriate joins from the path
+              belongs_to_names = path.each_cons(2).map do |join_from, join_to|
+                # TODO we shouldn't have to look up the edge again - use a graph model that allows us to annotate the edges with the reflections
+                reflections = join_from.reflect_on_all_associations(:belongs_to).find_all { |reflection| !reflection.options[:polymorphic] && reflection.klass == join_to }
+                # TODO warn if more than one reflection
+                reflection = reflections.min_by { |r| r.options.size }
+                reflection.name
+              end
 
-          # TODO weight edges to give preference to non-optional belongs_to (and other attributes?)
-          path = graph.dijkstra_shortest_path(edge_weights, vertex, pivot)
-          if path
-            # Generate a SQL query to count the number of vertex instances grouped by pivot id, with appropriate joins from the path
-            belongs_to_names = path.each_cons(2).map do |join_from, join_to|
-              # TODO we shouldn't have to look up the edge again - use a graph model that allows us to annotate the edges with the reflections
-              reflections = join_from.reflect_on_all_associations(:belongs_to).find_all { |reflection| !reflection.options[:polymorphic] && reflection.klass == join_to }
-              # TODO warn if more than one reflection
-              reflection = reflections.min_by { |r| r.options.size }
-              reflection.name
+              joins = belongs_to_names.reverse.inject { |acc, elt| { elt => acc } }
+              query = vertex.unscoped.joins(joins).group(qualified_primary_key(pivot)).select(qualified_primary_key(pivot), "COUNT(*)").to_sql
+
+              result[:pivoted_totals] << { entity_name: vertex.name, totals: Hash[connection.execute(query).map { |record| [record["id"], record["count"]] }] }
+            else
+              # TODO print warning that we couldn't find a path from the pivot to the vertex
             end
-
-            joins = belongs_to_names.reverse.inject { |acc, elt| { elt => acc } }
-            query = vertex.unscoped.joins(joins).group(qualified_primary_key(pivot)).select(qualified_primary_key(pivot), "COUNT(*)").to_sql
-
-            result[:pivoted_totals] << { entity_name: vertex.name, totals: Hash[connection.execute(query).map { |record| [record["id"], record["count"]] }] }
-          else
-            p "WARNING: No path from #{vertex.name} to #{pivot.name}"
           end
         end
 
         result
       end
     end
-
   end
 end
