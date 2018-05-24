@@ -10,18 +10,23 @@ module Optic
         logger = Logger.new(STDOUT)
         logger.level = Logger::WARN
 
-        # Get configuration
-        if !app.config.respond_to? :optic_api_key
-          logger.warn "No optic_api_key found in Rails configuration, Optic agent will not run"
-          next
-        end
-
-        api_key = app.config.optic_api_key
-        uri = app.config.optic_uri
+        did_print_api_key_warning = false
 
         logger.debug "Starting supervisor thread"
         supervisor = Thread.new do
           loop do
+            sleep 5.0
+
+            # Get configuration
+            if !app.config.respond_to? :optic_api_key
+              logger.warn "No optic_api_key found in Rails configuration, Optic agent will not run" unless did_print_api_key_warning
+              did_print_api_key_warning = true
+              next
+            end
+
+            api_key = app.config.optic_api_key
+            uri = app.config.respond_to?(:optic_uri) ? app.config.optic_uri : "wss://tikal-api-staging.herokuapp.com"
+
             logger.debug "Starting worker thread"
             worker = Thread.new do
               EventMachine.run do
@@ -80,8 +85,6 @@ module Optic
             end
 
             logger.info "Supervisor thread detected dead worker, sleeping"
-            sleep 5.0
-            logger.debug "Supervisor thread done sleeping"
           end
         end
       end
