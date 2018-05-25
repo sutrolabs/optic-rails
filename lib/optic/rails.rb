@@ -79,7 +79,7 @@ module Optic
 
       # Run PageRank on the graph to order the vertices by interestingness
       alpha = 0.5 # arbitrary! seems to work!
-      vertices = graph.vertices.find_all { |name| name.present? }.sort_by(&:name) # TODO why are some of these unnamed?
+      vertices = graph.vertices
 
       adjacency_matrix = Array.new(vertices.size) do |i|
         Array.new(vertices.size) do |j|
@@ -95,7 +95,7 @@ module Optic
       page_rank = PageRank.new(adjacency_matrix)
       init = Array.new(vertices.size, 1.0 / vertices.size.to_f)
       ranks = page_rank.calc(init, alpha)
-      ranked_entities = vertices.zip(ranks).map { |v, r| { name: v.name, page_rank: r } }.sort_by { |record| record[:page_rank] }.reverse
+      ranked_entities = vertices.zip(ranks).map { |v, r| { name: v.name, table_name: v.table_name, page_rank: r } }.sort_by { |record| record[:page_rank] }.reverse
 
       {
         schema_version: ActiveRecord::Migrator.current_version,
