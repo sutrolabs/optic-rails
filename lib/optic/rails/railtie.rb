@@ -25,7 +25,7 @@ module Optic
             end
 
             api_key = app.config.optic_api_key
-            uri = app.config.respond_to?(:optic_uri) ? app.config.optic_uri : "wss://api.optic.watch/cable"
+            uri = app.config.respond_to?(:optic_uri) ? app.config.optic_uri : "wss://tikal-api-production.herokuapp.com/cable"
 
             logger.debug "Starting worker thread"
             worker = Thread.new do
