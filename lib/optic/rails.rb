@@ -76,29 +76,12 @@ module Optic
     def self.get_entities
       graph = entity_graph
 
-      # Run PageRank on the graph to order the vertices by interestingness
-      alpha = 0.5 # arbitrary! seems to work!
-      vertices = graph.vertices
-
-      adjacency_matrix = Array.new(vertices.size) do |i|
-        Array.new(vertices.size) do |j|
-          0
-        end
-      end
-
-      graph.edges.each do |edge|
-        adjacency_matrix[vertices.index(edge.source)][vertices.index(edge.target)] = 1
-      end
-
-      # TODO run this calculation on the server instead, and pass the full graph (not just the node list)
-      page_rank = PageRank.new(adjacency_matrix)
-      init = Array.new(vertices.size, 1.0 / vertices.size.to_f)
-      ranks = page_rank.calc(init, alpha)
-      ranked_entities = vertices.zip(ranks).map { |v, r| { name: v.name, table_name: v.table_name, page_rank: r } }.sort_by { |record| record[:page_rank] }.reverse
+      # TODO send entire graph to server
+      entities = graph.vertices.map { |v| { name: v.name, table_name: v.table_name } }
 
       {
         schema_version: ActiveRecord::Migrator.current_version,
-        entities: ranked_entities # TODO also return entity attributes?
+        entities: entities # TODO also return entity attributes?
       }
     end
 
