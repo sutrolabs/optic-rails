@@ -57,13 +57,12 @@ module Optic
       graph = RGL::DirectedAdjacencyGraph.new
 
       base_klass = ApplicationRecord rescue ActiveRecord::Base
-      klasses = ObjectSpace.each_object(Class).find_all { |klass| klass < base_klass }
+      klasses = ObjectSpace.each_object(Class).find_all { |klass| klass < base_klass }.find_all(&:table_exists?)
 
       graph.add_vertices *klasses
 
       klasses.each do |klass|
         klass.reflect_on_all_associations(:belongs_to).each do |reflection|
-          # p klass, reflection
           next if reflection.options[:polymorphic] # TODO
 
           # TODO should the source be reflection.active_record or klass?
