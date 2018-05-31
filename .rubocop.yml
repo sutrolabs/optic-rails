@@ -1,0 +1,16 @@
+inherit_gem:
+  rubocop-rails:
+    - config/rails.yml
+
+AllCops:
+  TargetRubyVersion: 2.5
+  Exclude:
+    - bin/rails
+    - bin/spring
+    - bin/yarn
+    - bin/update
+    - bin/setup
+    - bin/rake
+    - bin/bundle
+    - node_modules/**/*
+    - vendor/**/*

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "optic/rails/railtie"
 
 require "rgl/adjacency"
@@ -101,7 +103,7 @@ module Optic
 
     def self.get_metrics(pivot_name)
       with_connection do |connection|
-        result = {entity_totals: []}
+        result = { entity_totals: [] }
         pivot = nil
 
         if pivot_name

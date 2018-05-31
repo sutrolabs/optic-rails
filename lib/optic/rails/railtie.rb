@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "action_cable_client"
 require "eventmachine"
 require "logger"
@@ -31,7 +33,7 @@ module Optic
             logger.debug "Starting worker thread"
             worker = Thread.new do
               EventMachine.run do
-                client = ActionCableClient.new(uri, { channel: "MetricsChannel" }, true, { "Authorization" => "Bearer #{project_key}" })
+                client = ActionCableClient.new(uri, { channel: "MetricsChannel" }, true, "Authorization" => "Bearer #{project_key}")
 
                 client.connected do
                   logger.debug "Optic agent connected"

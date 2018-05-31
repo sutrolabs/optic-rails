@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 $:.push File.expand_path("lib", __dir__)
 
 # Maintain your gem's version:
@@ -10,8 +12,8 @@ Gem::Specification.new do |s|
   s.authors     = ["Anton Vaynshtok"]
   s.email       = ["avaynshtok@gmail.com"]
   s.homepage    = "https://www.sutrolabs.com/"
-  s.summary     = "Rails plugin for Optic."
-  s.description = "Rails plugin for Optic."
+  s.summary     = "optic.watch for Rails"
+  s.description = "optic.watch is the easiest way to get notified when business metrics change. This gem intelligently collects metrics from your production database using ActiveRecord to automatically understand your data."
   s.license     = "MIT"
 
   s.files = Dir["{app,config,db,lib}/**/*", "MIT-LICENSE", "Rakefile", "README.md"]
