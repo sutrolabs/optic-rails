@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    optic-rails (0.5.2)
+    optic-rails (1.0.0)
       action_cable_client (~> 2.0.2)
       eventmachine (~> 1.0)
       rails (~> 5.0)
