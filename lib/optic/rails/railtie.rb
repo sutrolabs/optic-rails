@@ -5,12 +5,13 @@ require "logger"
 module Optic
   module Rails
     class Railtie < ::Rails::Railtie
-      initializer "optic_rails.launch_client_thread" do |app|
-        # TODO allow log output customization and verbose option
-        logger = Logger.new(STDOUT)
-        logger.level = Logger::WARN
+      config.optic = ActiveSupport::OrderedOptions.new
 
-        did_print_api_key_warning = false
+      initializer "optic_rails.launch_client_thread" do |app|
+        logger = Logger.new(STDOUT)
+        logger.level = config.optic.debug ? Logger::DEBUG : Logger::WARN
+
+        did_print_project_key_warning = false
 
         logger.debug "Starting supervisor thread"
         supervisor = Thread.new do
@@ -18,19 +19,19 @@ module Optic
             sleep 5.0
 
             # Get configuration
-            if !app.config.respond_to? :optic_api_key
-              logger.warn "No optic_api_key found in Rails configuration, Optic agent will not run" unless did_print_api_key_warning
-              did_print_api_key_warning = true
+            if !config.optic.project_key
+              logger.warn "No optic.project_key found in Rails configuration, Optic agent will not run" unless did_print_project_key_warning
+              did_print_project_key_warning = true
               next
             end
 
-            api_key = app.config.optic_api_key
-            uri = app.config.respond_to?(:optic_uri) ? app.config.optic_uri : "wss://sutrolabs-tikal-api-production.herokuapp.com/cable"
+            project_key = config.optic.project_key
+            uri = config.optic.uri || "wss://sutrolabs-tikal-api-production.herokuapp.com/cable"
 
             logger.debug "Starting worker thread"
             worker = Thread.new do
               EventMachine.run do
-                client = ActionCableClient.new(uri, { channel: "MetricsChannel" }, true, { "Authorization" => "Bearer #{api_key}" })
+                client = ActionCableClient.new(uri, { channel: "MetricsChannel" }, true, { "Authorization" => "Bearer #{project_key}" })
 
                 client.connected do
                   logger.debug "Optic agent connected"
