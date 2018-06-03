@@ -41,6 +41,13 @@ module Optic
         end
       end
 
+      def instances(pivot_name)
+        with_connection do |connection|
+          pivot = pivot_name.constantize
+          { instances: connection.execute(pivot.unscoped.select("*").to_sql).to_a }
+        end
+      end
+
       private
 
       # Try to be defensive with our DB connection:

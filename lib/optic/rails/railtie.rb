@@ -44,8 +44,8 @@ module Optic
                   EventMachine.stop
                 end
 
-                client.errored do |msg|
-                  logger.warn "Optic agent error: #{msg}"
+                client.errored do |data|
+                  logger.warn "Optic agent error: #{data}"
                   EventMachine.stop
                 end
 
@@ -53,28 +53,29 @@ module Optic
                   logger.debug "Optic agent subscribed"
                 end
 
-                client.pinged do |msg|
-                  logger.debug "Optic agent pinged: #{msg}"
+                client.pinged do |data|
+                  logger.debug "Optic agent pinged: #{data}"
                   client.perform "pong", message: {}
                 end
 
                 # called whenever a message is received from the server
-                client.received do |message|
-                  logger.debug "Optic agent received: #{message}"
-                  command = message["message"]["command"]
+                client.received do |data|
+                  logger.debug "Optic agent received: #{data}"
+                  message = data["message"]
+                  command = message["command"]
 
                   case command
                   when "request_schema"
-                    logger.debug "Optic agent got schema request"
                     client.perform "schema", message: Optic::Rails.entities
-                    logger.debug "Optic agent sent schema"
                   when "request_metrics"
-                    logger.debug "Optic agent got metrics request"
                     client.perform "metrics", message: Optic::Rails.metrics
-                    logger.debug "Optic agent sent metrics"
+                  when "request_instances"
+                    client.perform "instances", message: Optic::Rails.instances(message["pivot"])
                   else
                     logger.warn "Optic agent got unknown command: #{command}"
                   end
+
+                  logger.debug "Optic agent completed command: #{command}"
                 end
               end
 
