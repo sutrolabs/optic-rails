@@ -40,7 +40,11 @@ module Optic
                 pivot = pivot_name.constantize
                 join_path = instruction["join_path"]
                 joins = join_path.reverse.map(&:to_sym).inject { |acc, elt| { elt => acc } }
-                entity.joins(joins).group(qualified_primary_key(pivot)).select(qualified_primary_key(pivot), "COUNT(*)").to_sql # TODO collect other pivot instance columns here
+                entity
+                  .joins(joins)
+                  .group(qualified_primary_key(pivot))
+                  .select(qualified_primary_key(pivot), qualified_column(pivot, instruction["pivot_attribute_name"]), "COUNT(*)")
+                  .to_sql
               else
                 entity.select("COUNT(*)").to_sql
               end
@@ -73,8 +77,12 @@ module Optic
         end
       end
 
+      def qualified_column(entity, attribute)
+        %Q|"#{entity.table_name}"."#{attribute}"|
+      end
+
       def qualified_primary_key(entity)
-        %Q|"#{entity.table_name}"."#{entity.primary_key}"|
+        qualified_column(entity, entity.primary_key)
       end
 
       def active_record_klasses
