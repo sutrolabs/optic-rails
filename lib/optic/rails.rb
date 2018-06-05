@@ -13,7 +13,7 @@ module Optic
               {
                 name: klass.name,
                 table_name: klass.table_name,
-                attribute_names: klass.attribute_names,
+                entity_attribute_names: klass.attribute_names,
                 table_exists: klass.table_exists?,
                 associations: klass.reflect_on_all_associations.map do |reflection|
                   {
@@ -29,15 +29,15 @@ module Optic
         end
       end
 
-      def metrics
+      def metrics(instructions)
         with_connection do |connection|
-          result = { entity_totals: [] }
-          active_record_klasses.find_all(&:table_exists?).each do |klass|
-            count_query = klass.unscoped.select("COUNT(*)").to_sql
-            result[:entity_totals] << { name: klass.name, total: connection.execute(count_query).first["count"] }
+          instructions.map do |instruction|
+            name = instruction["entity"]
+            {
+              metric_configuration_id: instruction["metric_configuration_id"],
+              total: connection.execute(name.constantize.unscoped.select("COUNT(*)").to_sql).first["count"]
+            }
           end
-
-          result
         end
       end
 

@@ -68,7 +68,7 @@ module Optic
                   when "request_schema"
                     client.perform "schema", message: Optic::Rails.entities
                   when "request_metrics"
-                    client.perform "metrics", message: Optic::Rails.metrics
+                    client.perform "metrics", message: Optic::Rails.metrics(message["instructions"])
                   when "request_instances"
                     client.perform "instances", message: Optic::Rails.instances(message["pivot"])
                   else
