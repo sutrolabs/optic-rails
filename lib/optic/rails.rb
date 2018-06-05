@@ -33,10 +33,19 @@ module Optic
         with_connection do |connection|
           instructions.map do |instruction|
             name = instruction["entity"]
-            {
-              metric_configuration_id: instruction["metric_configuration_id"],
-              total: connection.execute(name.constantize.unscoped.select("COUNT(*)").to_sql).first["count"]
-            }
+            entity = name.constantize.unscoped
+
+            query =
+              if pivot_name = instruction["pivot"]
+                pivot = pivot_name.constantize
+                join_path = instruction["join_path"]
+                joins = join_path.reverse.map(&:to_sym).inject { |acc, elt| { elt => acc } }
+                entity.joins(joins).group(qualified_primary_key(pivot)).select(qualified_primary_key(pivot), "COUNT(*)").to_sql # TODO collect other pivot instance columns here
+              else
+                entity.select("COUNT(*)").to_sql
+              end
+
+            { metric_configuration_id: instruction["metric_configuration_id"], result: connection.execute(query).to_a }
           end
         end
       end
@@ -62,6 +71,10 @@ module Optic
             yield connection
           end
         end
+      end
+
+      def qualified_primary_key(entity)
+        %Q|"#{entity.table_name}"."#{entity.primary_key}"|
       end
 
       def active_record_klasses
