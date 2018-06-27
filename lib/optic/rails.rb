@@ -37,14 +37,34 @@ module Optic
 
             query =
               if pivot_name = instruction["pivot"]
+                # TODO this is a terrible hack to extract zero-valued pivot
+                # instances. The right thing to do is select from the pivot
+                # table and LEFT OUTER JOIN to the entity table, which results
+                # in a much simpler query, but it means we have to rewrite the
+                # pathfinding logic in the server to find paths using has_many
+                # associations instead of belongs_to associations, which might
+                # be less accurate for a bunch of reasons. For now, we're doing
+                # an INNER JOIN selecting from the entity table and then
+                # selecting every possible pivot value as a UNION, throwing out
+                # the duplicates.
                 pivot = pivot_name.constantize
                 join_path = instruction["join_path"]
                 joins = join_path.reverse.map(&:to_sym).inject { |acc, elt| { elt => acc } }
-                entity
-                  .joins(joins)
-                  .group(qualified_primary_key(pivot))
-                  .select(qualified_primary_key(pivot), qualified_column(pivot, instruction["pivot_attribute_name"]), "COUNT(*)")
-                  .to_sql
+                join_select = entity
+                              .joins(joins)
+                              .group(qualified_primary_key(pivot))
+                              .select(qualified_primary_key(pivot), qualified_column(pivot, instruction["pivot_attribute_name"]), "COUNT(*)")
+                              .to_sql
+
+                instance_select = pivot
+                                  .select(qualified_primary_key(pivot), qualified_column(pivot, instruction["pivot_attribute_name"]), "0 as count")
+                                  .to_sql
+
+                union_sql = <<~"SQL"
+                              SELECT "pivot_values"."id", "pivot_values"."name", MAX("pivot_values"."count") AS count
+                                FROM (#{join_select} UNION ALL #{instance_select}) AS pivot_values
+                                GROUP BY "pivot_values"."id", "pivot_values"."name"
+                            SQL
               else
                 entity.select("COUNT(*)").to_sql
               end
