@@ -50,20 +50,26 @@ module Optic
                 pivot = pivot_name.constantize
                 join_path = instruction["join_path"]
                 joins = join_path.reverse.map(&:to_sym).inject { |acc, elt| { elt => acc } }
+
+                columns = [
+                  %Q|#{qualified_primary_key(pivot)} AS "primary_key"|,
+                  %Q|#{qualified_column(pivot, instruction["pivot_attribute_name"])} AS "pivot_attribute_name"|,
+                ]
+
                 join_select = entity
                               .joins(joins)
                               .group(qualified_primary_key(pivot))
-                              .select(qualified_primary_key(pivot), qualified_column(pivot, instruction["pivot_attribute_name"]), "COUNT(*)")
+                              .select(*columns, 'COUNT(*) AS "count"')
                               .to_sql
 
                 instance_select = pivot
-                                  .select(qualified_primary_key(pivot), qualified_column(pivot, instruction["pivot_attribute_name"]), "0 as count")
+                                  .select(*columns, '0 AS "count"')
                                   .to_sql
 
                 union_sql = <<~"SQL"
-                              SELECT "pivot_values"."id", "pivot_values"."name", MAX("pivot_values"."count") AS count
-                                FROM (#{join_select} UNION ALL #{instance_select}) AS pivot_values
-                                GROUP BY "pivot_values"."id", "pivot_values"."name"
+                              SELECT "pivot_values"."primary_key", "pivot_values"."pivot_attribute_name", MAX("pivot_values"."count") AS "count"
+                                FROM (#{join_select} UNION ALL #{instance_select}) AS "pivot_values"
+                                GROUP BY "pivot_values"."primary_key", "pivot_values"."pivot_attribute_name"
                             SQL
               else
                 entity.select("COUNT(*)").to_sql
@@ -71,13 +77,6 @@ module Optic
 
             { metric_configuration_id: instruction["metric_configuration_id"], result: connection.execute(query).to_a }
           end
-        end
-      end
-
-      def instances(pivot_name)
-        with_connection do |connection|
-          pivot = pivot_name.constantize
-          { instances: connection.execute(pivot.unscoped.select("*").to_sql).to_a }
         end
       end
 

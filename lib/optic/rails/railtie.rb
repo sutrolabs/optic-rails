@@ -69,8 +69,6 @@ module Optic
                     client.perform "schema", message: Optic::Rails.entities
                   when "request_metrics"
                     client.perform "metrics", message: Optic::Rails.metrics(message["instructions"])
-                  when "request_instances"
-                    client.perform "instances", message: Optic::Rails.instances(message["pivot"])
                   else
                     logger.warn "Optic agent got unknown command: #{command}"
                   end
