@@ -33,7 +33,7 @@ module Optic
         with_connection do |connection|
           instructions.map do |instruction|
             name = instruction["entity"]
-            entity = name.constantize.unscoped
+            entity = entity_for_entity_name name
 
             query =
               if pivot_name = instruction["pivot"]
@@ -47,7 +47,7 @@ module Optic
                 # an INNER JOIN selecting from the entity table and then
                 # selecting every possible pivot value as a UNION, throwing out
                 # the duplicates.
-                pivot = pivot_name.constantize
+                pivot = entity_for_entity_name pivot_name
                 join_path = instruction["join_path"]
                 joins = join_path.reverse.map(&:to_sym).inject { |acc, elt| { elt => acc } }
 
@@ -94,6 +94,10 @@ module Optic
             yield connection
           end
         end
+      end
+
+      def entity_for_entity_name(entity_name)
+        entity_name.constantize.unscoped
       end
 
       def qualified_column(entity, attribute)
