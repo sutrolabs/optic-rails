@@ -52,30 +52,30 @@ module Optic
                 joins = join_path.reverse.map(&:to_sym).inject { |acc, elt| { elt => acc } }
 
                 columns = [
-                  %Q|#{qualified_primary_key(pivot)} AS "primary_key"|,
-                  %Q|#{qualified_column(pivot, instruction["pivot_attribute_name"])} AS "pivot_attribute_name"|,
+                  %Q|#{qualified_primary_key(connection, pivot)} AS primary_key|,
+                  %Q|#{qualified_entity_column(connection, pivot, instruction["pivot_attribute_name"])} AS pivot_attribute_name|,
                 ]
 
                 join_select = entity
                               .joins(joins)
-                              .group(qualified_primary_key(pivot))
-                              .select(*columns, 'COUNT(*) AS "count"')
+                              .group(qualified_primary_key(connection, pivot))
+                              .select(*columns, 'COUNT(*) AS count')
                               .to_sql
 
                 instance_select = pivot
-                                  .select(*columns, '0 AS "count"')
+                                  .select(*columns, '0 AS count')
                                   .to_sql
 
                 union_sql = <<~"SQL"
-                              SELECT "pivot_values"."primary_key", "pivot_values"."pivot_attribute_name", MAX("pivot_values"."count") AS "count"
-                                FROM (#{join_select} UNION ALL #{instance_select}) AS "pivot_values"
-                                GROUP BY "pivot_values"."primary_key", "pivot_values"."pivot_attribute_name"
+                              SELECT pivot_values.primary_key, pivot_values.pivot_attribute_name, MAX(pivot_values.count) AS count
+                                FROM (#{join_select} UNION ALL #{instance_select}) AS pivot_values
+                                GROUP BY pivot_values.primary_key, pivot_values.pivot_attribute_name
                             SQL
               else
-                entity.select("COUNT(*)").to_sql
+                entity.select('COUNT(*) as count').to_sql
               end
 
-            { metric_configuration_id: instruction["metric_configuration_id"], result: connection.execute(query).to_a }
+            { metric_configuration_id: instruction["metric_configuration_id"], result: connection.exec_query(query).to_a }
           end
         end
       end
@@ -89,8 +89,12 @@ module Optic
       def with_connection
         ActiveRecord::Base.connection_pool.with_connection do |connection|
           connection.transaction do
-            connection.execute "SET TRANSACTION READ ONLY"
-            connection.execute "SET LOCAL statement_timeout = 100"
+            if connection.adapter_name == "PostgreSQL"
+              connection.execute "SET TRANSACTION READ ONLY"
+              connection.execute "SET LOCAL statement_timeout = 100"
+              # TODO support equivalent options for other adapters (such as mysql)
+            end
+
             yield connection
           end
         end
@@ -100,12 +104,16 @@ module Optic
         entity_name.constantize.unscoped
       end
 
-      def qualified_column(entity, attribute)
-        %Q|"#{entity.table_name}"."#{attribute}"|
+      def qualified_primary_key(connection, entity)
+        qualified_entity_column(connection, entity, entity.primary_key)
       end
 
-      def qualified_primary_key(entity)
-        qualified_column(entity, entity.primary_key)
+      def qualified_entity_column(connection, entity, attribute)
+        qualified_table_column(connection, entity.table_name, attribute)
+      end
+
+      def qualified_table_column(connection, table_name, column_name)
+        connection.quote_table_name(table_name) + "." + connection.quote_column_name(column_name)
       end
 
       def active_record_klasses
