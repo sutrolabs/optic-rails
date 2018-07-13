@@ -5,33 +5,44 @@ require "optic/rails/railtie"
 module Optic
   module Rails
     class << self
-      def entities
+      def entities(logger)
         with_connection do
           {
             schema_version: ActiveRecord::Migrator.current_version,
             entities: active_record_klasses.map do |klass|
-              {
-                name: klass.name,
-                table_name: klass.table_name,
-                entity_attribute_names: klass.attribute_names,
-                table_exists: klass.table_exists?,
-                associations: klass.reflect_on_all_associations.map do |reflection|
-                  {
-                    name: reflection.name,
-                    macro: reflection.macro,
-                    options: reflection.options.map { |k, v| [k, v.to_s] }.to_h,
-                    klass_name: reflection.options[:polymorphic] ? nil : reflection.klass.name,
-                  }
-                end
-              }
-            end
+              begin
+                logger.debug "Inspecting entity #{klass}"
+                {
+                  name: klass.name,
+                  table_name: klass.table_name,
+                  entity_attribute_names: klass.attribute_names,
+                  table_exists: klass.table_exists?,
+                  associations: klass.reflect_on_all_associations.map do |reflection|
+                    begin
+                      logger.debug "Inspecting association #{klass}/#{reflection.name}"
+                      {
+                        name: reflection.name,
+                        macro: reflection.macro,
+                        options: reflection.options.map { |k, v| [k, v.to_s] }.to_h,
+                        klass_name: reflection.options[:polymorphic] ? nil : reflection.klass.name,
+                      }
+                    rescue
+                      nil
+                    end
+                  end.compact
+                }
+              rescue
+                nil
+              end
+            end.compact
           }
         end
       end
 
-      def metrics(instructions)
+      def metrics(logger, instructions)
         with_connection do |connection|
           instructions.map do |instruction|
+            logger.debug "Gathering metrics for metric_configuration_id = #{instruction['metric_configuration_id']}"
             name = instruction["entity"]
             entity = entity_for_entity_name name
 

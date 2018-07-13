@@ -66,9 +66,9 @@ module Optic
 
                   case command
                   when "request_schema"
-                    client.perform "schema", message: Optic::Rails.entities
+                    client.perform "schema", message: Optic::Rails.entities(logger)
                   when "request_metrics"
-                    client.perform "metrics", message: Optic::Rails.metrics(message["instructions"])
+                    client.perform "metrics", message: Optic::Rails.metrics(logger, message["instructions"])
                   else
                     logger.warn "Optic agent got unknown command: #{command}"
                   end
