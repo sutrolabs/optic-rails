@@ -26,12 +26,14 @@ module Optic
                         options: reflection.options.map { |k, v| [k, v.to_s] }.to_h,
                         klass_name: reflection.options[:polymorphic] ? nil : reflection.klass.name,
                       }
-                    rescue
+                    rescue => e
+                      logger.warn "Could not inspect association, error was: #{e}"
                       nil
                     end
                   end.compact
                 }
-              rescue
+              rescue => e
+                logger.warn "Could not inspect entity, error was: #{e}"
                 nil
               end
             end.compact
